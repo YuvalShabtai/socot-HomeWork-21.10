@@ -1,0 +1,279 @@
+// הערה חשובה: השתמשתי בבינה מלאכותית רק כדי ליצור סדר בתשובות שלי, הערות, ודיוקים בקוד. חוץ מזה את התשובות אני כתבתי
+
+using System;
+using System.Text;
+
+namespace Assignment8020
+{
+    // =========================
+    // מחלקת Employee (בסיס)
+    // =========================
+    public class Employee
+    {
+        // תכונות/שדות (protected כדי שמחלקות יורשות יגשו אליהן, אך לא קוד חיצוני)
+        protected string name;
+        protected int salary;
+        protected DateTime startDate;
+
+        // שכר ברירת מחדל קבוע
+        protected const int defaultSalary = 10000;
+
+        // שדה סטטי: מספר העובדים בחברה
+        protected static int numEmployees = 0;
+
+        // חשיפה לקריאה בלבד למספר העובדים (סטטי)
+        public static int NumEmployees => numEmployees;
+
+        // פעולה בונה מלאה
+        public Employee(string name, DateTime startDate, int salary)
+        {
+            this.name = name;
+            this.startDate = startDate;
+            this.salary = salary;
+            numEmployees++; // הגדלת מונה העובדים במקום יחיד
+        }
+
+        // פעולה בונה ריקה: משרשרת לפעולה הבונה המלאה
+        public Employee() : this("EinShem", DateTime.Now, defaultSalary) { }
+
+        // פעולה בונה עם שם בלבד: משרשרת לפעולה הבונה המלאה
+        public Employee(string name) : this(name, DateTime.Now, defaultSalary) { }
+
+        // בונוס = 1000 ₪ לכל שנת עבודה
+        public virtual int Bonus()
+        {
+            int years = YearsOfService();
+            return 1000 * Math.Max(0, years);
+        }
+
+        // מספר ימי חופשה = שנות ותק * mult (ברירת מחדל 1)
+        public int Vacation(int mult = 1)
+        {
+            return YearsOfService() * mult;
+        }
+
+        // חישוב שנות ותק מלאות (לפי תאריך)
+        protected int YearsOfService()
+        {
+            DateTime today = DateTime.Today;
+            int years = today.Year - startDate.Year;
+            // אם יום ההולדת התעסוקתי טרם חל השנה – נגרע שנה
+            if (startDate.Date > today.AddYears(-years)) years--;
+            return Math.Max(0, years);
+        }
+
+        // ייצוג טקסטואלי של עובד
+        public override string ToString()
+        {
+            // return base.ToString(); // ← נשמר כהערה לפי דרישת התרגיל
+            return $"Employee(name={name}, salary={salary}, startDate={startDate:yyyy-MM-dd}, " +
+                   $"years={YearsOfService()}, bonus={Bonus()}₪, vacation={Vacation()}d)";
+        }
+    }
+
+    // =========================
+    // מחלקת Manager (יורשת Employee)
+    // =========================
+    public class Manager : Employee
+    {
+        // תכונה חדשה: תואר המנהל
+        private string title;
+
+        // מנהל יכול לנהל עד 10 עובדים
+        private readonly Employee[] team = new Employee[10];
+        private int teamCount = 0;
+
+        // פעולה בונה מלאה: משרשרת ל-Employee
+        public Manager(string name, DateTime startDate, int salary, string title)
+            : base(name, startDate, salary)
+        {
+            this.title = title;
+        }
+
+        // פעולה בונה ריקה – נדרשת כדי לאפשר ירושה ע"י CEO (קריאה מרומזת ל-base())
+        public Manager() : base()
+        {
+            this.title = "manager";
+        }
+
+        // פעולה בונה: שם בלבד → title="big boss", שרשור ל-Employee(string name)
+        public Manager(string name) : base(name)
+        {
+            this.title = "big boss";
+        }
+
+        // פעולה בונה: שכר בלבד → title="boss"
+        // לא משרשר באופן מפורש ל-Employee, לכן תתבצע קריאה מרומזת ל-base() (פרמטרלס)
+        public Manager(int salary)
+        {
+            this.salary = salary; // נגיש כי salary מוגדר protected במחלקת הבסיס
+            this.title = "boss";
+        }
+
+        // הוספת כפיף (עד 10)
+        public bool AddReport(Employee e)
+        {
+            if (teamCount >= team.Length) return false;
+            team[teamCount++] = e;
+            return true;
+        }
+
+        // בונוס של מנהל = פי 3 מבונוס של עובד רגיל
+        public override int Bonus()
+        {
+            return base.Bonus() * 3; // שימוש ב-base למניעת שכפול לוגיקה
+        }
+
+        public override string ToString()
+        {
+            // משתמשים ב-ToString של Employee, ומרחיבים
+            string baseDesc = base.ToString();
+            return $"{baseDesc}, title={title}, managerVacation={Vacation(2)}d, reports={teamCount}";
+        }
+    }
+
+    // =========================
+    // מחלקת CEO (יורשת Manager)
+    // =========================
+    public class CEO : Manager
+    {
+        // תכונה נוספת: כמות אופציות
+        private int stockOptions;
+
+        // פעולה בונה מלאה – שימו לב: base מתייחס אל Manager
+        public CEO(string name, DateTime startDate, int salary, string title, int stockOptions)
+            : base(name, startDate, salary, title)
+        {
+            this.stockOptions = stockOptions;
+        }
+
+        // בונוס של מנכ"ל = בונוס כמנהל + אופציות*10
+        public override int Bonus()
+        {
+            return base.Bonus() + stockOptions * 10; // כאן base הוא Manager
+        }
+
+        public override string ToString()
+        {
+            return $"{base.ToString()}, stockOptions={stockOptions}";
+        }
+    }
+
+    // =========================
+    // מחלקת Guard (יורשת Employee)
+    // =========================
+    public class Guard : Employee
+    {
+        private string shift; // למשל "Day" / "Night"
+
+        public Guard(string name, DateTime startDate, int salary, string shift)
+            : base(name, startDate, salary)
+        {
+            this.shift = shift;
+        }
+
+        public Guard(string name, string shift) : base(name)
+        {
+            this.shift = shift;
+        }
+
+        // בונוס קבוע לשומר
+        public override int Bonus() => 500;
+
+        public override string ToString()
+        {
+            return $"Guard({base.ToString()}, shift={shift})";
+        }
+    }
+
+    // =========================
+    // מחלקת Company (הרכב: מכילה מערך Employees)
+    // =========================
+    public class Company
+    {
+        private readonly string companyName;
+        private readonly Employee[] employees;
+        private int count = 0;
+
+        public Company(string companyName, int capacity)
+        {
+            this.companyName = companyName;
+            employees = new Employee[capacity];
+        }
+
+        public bool AddEmployee(Employee e)
+        {
+            if (count >= employees.Length) return false;
+            employees[count++] = e;
+            return true;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Company '{companyName}', localCount={count}, globalNumEmployees={Employee.NumEmployees}");
+            for (int i = 0; i < count; i++)
+            {
+                sb.AppendLine($"  - {employees[i]}");
+            }
+            return sb.ToString();
+        }
+    }
+
+    // =========================
+    // דוגמת הרצה ב-Program
+    // =========================
+    internal class Program
+    {
+        private static void Main()
+        {
+            Console.OutputEncoding = Encoding.UTF8; // תווים בעברית אם תרצו
+
+            // 1) יצירת 2 עובדים לפי הדרישה
+            Employee e1 = new Employee("Dana", new DateTime(2019, 6, 1), 12_000);
+            Employee e2 = new Employee("Avi"); // ריק+שם → תאריך עכשיו ושכר ברירת מחדל
+            Console.WriteLine(e1);
+            Console.WriteLine(e2);
+
+            // 2) מנהל בעזרת הפעולה הבונה המלאה
+            Manager m1 = new Manager("Maya", new DateTime(2017, 8, 1), 20_000, "Team Lead");
+            Console.WriteLine(m1);
+
+            // הוספת כפיפים למנהל
+            m1.AddReport(e1);
+            m1.AddReport(e2);
+            Console.WriteLine(m1);
+
+            // 3) מנכ"ל
+            CEO c1 = new CEO("Noa", new DateTime(2015, 1, 1), 35_000, "CEO", stockOptions: 1000);
+            Console.WriteLine(c1);
+
+            // 4) שומרים
+            Guard g1 = new Guard("Yossi", new DateTime(2021, 5, 1), 9_000, "Day");
+            Guard g2 = new Guard("Lior", "Night");
+            Console.WriteLine(g1);
+            Console.WriteLine(g2);
+
+            // 5) מנהלים עם בונים נוספים
+            Manager m2 = new Manager("Hila"); // title="big boss", שרשור ל-Employee(string)
+            Manager m3 = new Manager(18_000); // implicit base() → Employee()
+            Console.WriteLine(m2);
+            Console.WriteLine(m3);
+
+            // 6) חברה עם מערך Employees
+            Company comp = new Company("Chameleon", capacity: 10);
+            comp.AddEmployee(e1);
+            comp.AddEmployee(e2);
+            comp.AddEmployee(m1);
+            comp.AddEmployee(m2);
+            comp.AddEmployee(m3);
+            comp.AddEmployee(c1);
+            comp.AddEmployee(g1);
+            comp.AddEmployee(g2);
+
+            Console.WriteLine();
+            Console.WriteLine(comp);
+
+        }
+    }
+}
